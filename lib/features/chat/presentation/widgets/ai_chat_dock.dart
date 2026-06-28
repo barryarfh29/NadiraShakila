@@ -11,6 +11,7 @@ import '../../../agent/data/agent_approval.dart';
 import '../../../agent/data/agent_changes.dart';
 import '../../../agent/data/checkpoints_provider.dart';
 import '../../../agent/widgets/approval_dialog.dart';
+import '../../../agent/widgets/diff_preview.dart';
 import '../../../workspace/providers/workspace_provider.dart';
 import '../../data/models/conversation_model.dart';
 import '../providers/attached_context.dart';
@@ -49,6 +50,7 @@ class AiChatDock extends ConsumerWidget {
             if (apiKey.isNotEmpty) const _ChangesBar(),
             if (apiKey.isNotEmpty) const _ApprovalBar(),
             if (apiKey.isNotEmpty) const _NewApprovalBar(),
+            if (apiKey.isNotEmpty) const DiffPreviewPanel(),
             if (apiKey.isNotEmpty) const ChatInput(),
           ],
         ),
