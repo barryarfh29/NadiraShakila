@@ -5,6 +5,7 @@ import 'package:xterm/xterm.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/codicons.dart';
+import '../chat/presentation/providers/chat_provider.dart';
 import 'terminal_provider.dart';
 import 'terminal_sessions.dart';
 
@@ -66,6 +67,32 @@ class _TerminalPanelState extends ConsumerState<TerminalPanel> {
 
   void _clearTerminal(Terminal terminal) {
     terminal.write('\x1b[2J\x1b[H'); // Clear screen and move cursor to home
+  }
+
+  /// Send terminal output to chat input so user can forward to agent
+  void _sendToAgent(Terminal terminal) {
+    final buffer = terminal.buffer;
+    final lines = <String>[];
+    for (int i = 0; i < buffer.lines.length; i++) {
+      final line = buffer.lines[i].toString();
+      if (line.isNotEmpty) {
+        lines.add(line);
+      }
+    }
+    // Take last 50 lines max
+    final recent = lines.length > 50 ? lines.sublist(lines.length - 50) : lines;
+    final text = recent.join('\n').trim();
+    if (text.isNotEmpty) {
+      ref.read(chatInputDraftProvider.notifier).state =
+          'Ini output terminal saya:\n```\n$text\n```\n\nTolong bantu analisis/fix error ini.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Terminal output dikirim ke chat input'),
+          duration: Duration(seconds: 2),
+          backgroundColor: AppColors.surfaceVariant,
+        ),
+      );
+    }
   }
 
   void _showContextMenu(BuildContext context, Offset position, Terminal terminal) {
@@ -214,13 +241,26 @@ class _TerminalPanelState extends ConsumerState<TerminalPanel> {
                       // Copy all logs button
                       if (active != null)
                         Tooltip(
-                          message: 'Copy All Logs',
+                          message: 'Copy Terminal Output',
                           child: GestureDetector(
                             onTap: () => _copyAllLogs(active.terminal),
                             child: const Padding(
                               padding: EdgeInsets.all(4),
                               child: Icon(Codicons.copy,
                                   size: 13, color: AppColors.textSecondary),
+                            ),
+                          ),
+                        ),
+                      // Send terminal output to agent chat
+                      if (active != null)
+                        Tooltip(
+                          message: 'Send to Agent',
+                          child: GestureDetector(
+                            onTap: () => _sendToAgent(active.terminal),
+                            child: const Padding(
+                              padding: EdgeInsets.all(4),
+                              child: Icon(Codicons.send,
+                                  size: 13, color: AppColors.primary),
                             ),
                           ),
                         ),
