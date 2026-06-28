@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -631,6 +633,13 @@ class _CodeEditorState extends ConsumerState<_CodeEditor> {
   final TextEditingController _inlineController = TextEditingController();
   final FocusNode _inlineFocus = FocusNode();
 
+  // Ghost text (autocomplete) state.
+  Timer? _ghostTimer;
+  bool _ghostFetching = false;
+  String? _ghostText;
+  // ignore: unused_field
+  int _ghostOffset = -1;
+
   // Markdown preview toggle (for .md files).
   bool _mdPreview = false;
   bool get _isMarkdown =>
@@ -678,6 +687,11 @@ class _CodeEditorState extends ConsumerState<_CodeEditor> {
         );
     _updateCursor();
     _prevText = _controller.text;
+
+    // Schedule ghost text suggestion after typing stops
+    _dismissGhost();
+    _ghostTimer?.cancel();
+    _ghostTimer = Timer(const Duration(milliseconds: 1500), _fetchGhostText);
   }
 
   /// Detects a single typed character and applies auto-indent (Enter) and
@@ -753,6 +767,92 @@ class _CodeEditorState extends ConsumerState<_CodeEditor> {
     final col = offset - lastNewline;
     ref.read(cursorPositionProvider.notifier).state = (line: line, col: col);
   }
+
+  // === Ghost text (inline autocomplete) ===
+
+  void _dismissGhost() {
+    setState(() {
+      _ghostText = null;
+      _ghostOffset = -1;
+    });
+  }
+
+  bool _acceptGhost() {
+    if (_ghostText == null || _ghostText!.isEmpty) return false;
+    _insertAtCaret(_ghostText!);
+    _dismissGhost();
+    return true;
+  }
+
+  Future<void> _fetchGhostText() async {
+    final api = ref.read(apiServiceProvider);
+    if (api == null || _ghostFetching) return;
+    _ghostFetching = true;
+
+    try {
+      final text = _controller.text;
+      final sel = _controller.selection;
+      if (!sel.isValid) return;
+      final offset = sel.baseOffset.clamp(0, text.length);
+
+      // Context: last 30 lines before cursor
+      final before = text.substring(0, offset);
+      final lines = before.split('\n');
+      final ctx = (lines.length > 30 ? lines.sublist(lines.length - 30) : lines)
+          .join('\n');
+
+      // A few lines after cursor
+      final after = text.substring(offset);
+      final afterLines = after.split('\n');
+      final afterCtx = (afterLines.length > 5
+              ? afterLines.sublist(0, 5)
+              : afterLines)
+          .join('\n');
+
+      final ext = p.extension(widget.file.name).replaceFirst('.', '');
+      final prompt =
+          'Continue this $ext code. Output ONLY the next 1-3 lines. '
+          'No explanation, no fences, just raw code.\n\n'
+          '```$ext\n$ctx\n```\n\nAfter cursor:\n```\n$afterCtx\n```';
+
+      final model = _resolveModel();
+      final result = await api.chatCompletion(
+        messages: [
+          {'role': 'user', 'content': prompt}
+        ],
+        model: model,
+        temperature: 0.2,
+        maxTokens: 100,
+      );
+
+      if (!mounted) return;
+
+      var suggestion = result.trim();
+      if (suggestion.startsWith('```')) {
+        final nl = suggestion.indexOf('\n');
+        if (nl != -1) suggestion = suggestion.substring(nl + 1);
+        if (suggestion.endsWith('```')) {
+          suggestion = suggestion.substring(0, suggestion.length - 3);
+        }
+      }
+      suggestion = suggestion.trimRight();
+
+      // Only show if cursor hasn't moved
+      final curSel = _controller.selection;
+      if (curSel.isValid && curSel.baseOffset == offset && suggestion.isNotEmpty) {
+        setState(() {
+          _ghostText = suggestion;
+          _ghostOffset = offset;
+        });
+      }
+    } catch (_) {
+      // Silent fail
+    } finally {
+      _ghostFetching = false;
+    }
+  }
+
+  // === End ghost text ===
 
   /// Moves the caret to the start of [line] (1-based) and focuses the editor.
   void _gotoLine(int line) {
@@ -905,6 +1005,23 @@ class _CodeEditorState extends ConsumerState<_CodeEditor> {
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     final isCtrl = HardwareKeyboard.instance.isControlPressed;
+
+    // Tab: accept ghost text suggestion
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.tab &&
+        _ghostText != null) {
+      _acceptGhost();
+      return KeyEventResult.handled;
+    }
+
+    // Escape: dismiss ghost text
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.escape &&
+        _ghostText != null) {
+      _dismissGhost();
+      return KeyEventResult.handled;
+    }
+
     if (event is KeyDownEvent &&
         isCtrl &&
         event.logicalKey == LogicalKeyboardKey.keyI) {
@@ -1044,6 +1161,7 @@ class _CodeEditorState extends ConsumerState<_CodeEditor> {
 
   @override
   void dispose() {
+    _ghostTimer?.cancel();
     _controller.removeListener(_onChanged);
     _controller.dispose();
     _focusNode.dispose();
