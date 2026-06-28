@@ -715,12 +715,18 @@ class ChatController {
         _ref.read(agentStatusProvider.notifier).state = 'Berpikir...';
         render(); // Force UI update so user sees "Berpikir..." while waiting
 
-        final response = await apiService.chatCompletion(
+        // Stream the response token by token so user sees it building up
+        final responseBuffer = StringBuffer();
+        await for (final chunk in apiService.streamChatCompletion(
           messages: convo,
           model: model,
           temperature: 0.3,
           maxTokens: 4096,
-        );
+        )) {
+          if (_cancelled) break;
+          responseBuffer.write(chunk);
+        }
+        final response = responseBuffer.toString();
 
         final call = _parseToolCall(response);
 

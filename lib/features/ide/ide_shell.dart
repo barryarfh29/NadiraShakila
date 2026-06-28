@@ -34,24 +34,41 @@ class IdeShell extends ConsumerWidget {
     final bottomTab = ref.watch(bottomPanelProvider);
     final terminalHeight = ref.watch(terminalHeightProvider);
 
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.backquote, control: true):
-            () {
-          final cur = ref.read(bottomPanelProvider);
-          ref.read(bottomPanelProvider.notifier).state =
-              cur == BottomTab.terminal ? null : BottomTab.terminal;
-        },
-        const SingleActivator(LogicalKeyboardKey.keyP, control: true): () {
-          showQuickOpen(context, ref);
-        },
-        const SingleActivator(LogicalKeyboardKey.keyO, control: true): () {
-          openWorkspaceFolder(context, ref);
-        },
+    return Shortcuts(
+      shortcuts: const <ShortcutActivator, Intent>{
+        SingleActivator(LogicalKeyboardKey.backquote, control: true):
+            _ToggleTerminalIntent(),
+        SingleActivator(LogicalKeyboardKey.keyP, control: true):
+            _QuickOpenIntent(),
+        SingleActivator(LogicalKeyboardKey.keyO, control: true):
+            _OpenFolderIntent(),
       },
-      child: FocusScope(
-        autofocus: true,
-        child: Scaffold(
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          _ToggleTerminalIntent: CallbackAction<_ToggleTerminalIntent>(
+            onInvoke: (_) {
+              final cur = ref.read(bottomPanelProvider);
+              ref.read(bottomPanelProvider.notifier).state =
+                  cur == BottomTab.terminal ? null : BottomTab.terminal;
+              return null;
+            },
+          ),
+          _QuickOpenIntent: CallbackAction<_QuickOpenIntent>(
+            onInvoke: (_) {
+              showQuickOpen(context, ref);
+              return null;
+            },
+          ),
+          _OpenFolderIntent: CallbackAction<_OpenFolderIntent>(
+            onInvoke: (_) {
+              openWorkspaceFolder(context, ref);
+              return null;
+            },
+          ),
+        },
+        child: FocusScope(
+          autofocus: true,
+          child: Scaffold(
           body: Column(
             children: [
               const UpdateBanner(),
@@ -96,6 +113,7 @@ class IdeShell extends ConsumerWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -376,4 +394,17 @@ class _TerminalResizeHandleState extends State<_TerminalResizeHandle> {
       ),
     );
   }
+}
+
+// Intent classes for IDE-level keyboard shortcuts
+class _ToggleTerminalIntent extends Intent {
+  const _ToggleTerminalIntent();
+}
+
+class _QuickOpenIntent extends Intent {
+  const _QuickOpenIntent();
+}
+
+class _OpenFolderIntent extends Intent {
+  const _OpenFolderIntent();
 }
