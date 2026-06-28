@@ -454,19 +454,19 @@ class _AgentStepsState extends State<_AgentSteps> {
         for (final card in cards)
           if (card.isText)
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: 4),
               child: Text(
                 card.text,
                 style: const TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 13,
-                  height: 1.5,
+                  fontSize: 12,
+                  height: 1.4,
                 ),
               ),
             )
           else
             Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.only(bottom: 3),
               child: _ActionCard(
                 icon: card.icon,
                 iconColor: card.iconColor,
@@ -640,89 +640,74 @@ class _ActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.4)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status icon (left)
-          Container(
-            width: 22,
-            height: 22,
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Icon(icon, size: 13, color: iconColor),
-          ),
-          const SizedBox(width: 10),
-
-          // Label + file detail
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    if (detail.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.codeBlock,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                                color: AppColors.border.withValues(alpha: 0.3)),
-                          ),
-                          child: Text(
-                            _shortDetail(detail),
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 11,
-                              fontFamily: 'JetBrains Mono',
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+          Row(
+            children: [
+              // Icon
+              Icon(icon, size: 12, color: iconColor),
+              const SizedBox(width: 6),
+              // Label
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 11,
                 ),
-                if (status != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    status!,
-                    style: TextStyle(
-                      color: statusColor.withValues(alpha: 0.8),
-                      fontSize: 10.5,
+              ),
+              if (detail.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                // File badge
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: AppColors.codeBlock,
+                      borderRadius: BorderRadius.circular(3),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    child: Text(
+                      _shortDetail(detail),
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 10.5,
+                        fontFamily: 'JetBrains Mono',
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
                   ),
-                ],
+                ),
               ],
-            ),
+            ],
           ),
+          if (status != null) ...[
+            const SizedBox(height: 2),
+            Padding(
+              padding: const EdgeInsets.only(left: 18),
+              child: Text(
+                status!,
+                style: TextStyle(
+                  color: statusColor,
+                  fontSize: 10,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  /// Shorten path to just filename for display
   String _shortDetail(String detail) {
     if (detail.contains('/')) {
       return detail.split('/').last;
