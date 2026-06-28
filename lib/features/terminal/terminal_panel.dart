@@ -167,46 +167,43 @@ class _TerminalPanelState extends ConsumerState<TerminalPanel> {
           Expanded(
             child: active == null
                 ? const SizedBox.shrink()
-                : Focus(
-                    onKeyEvent: (node, event) {
-                      if (event is KeyDownEvent) {
-                        // Ctrl+Shift+C - Copy selection
-                        if (event.logicalKey == LogicalKeyboardKey.keyC &&
-                            HardwareKeyboard.instance.isControlPressed &&
-                            HardwareKeyboard.instance.isShiftPressed) {
-                          _copySelection(active.terminal);
-                          return KeyEventResult.handled;
-                        }
-                        // Ctrl+Shift+V - Paste
-                        if (event.logicalKey == LogicalKeyboardKey.keyV &&
-                            HardwareKeyboard.instance.isControlPressed &&
-                            HardwareKeyboard.instance.isShiftPressed) {
-                          _pasteFromClipboard(active.terminal);
-                          return KeyEventResult.handled;
-                        }
-                        // Ctrl+L - Clear terminal
-                        if (event.logicalKey == LogicalKeyboardKey.keyL &&
-                            HardwareKeyboard.instance.isControlPressed) {
-                          _clearTerminal(active.terminal);
-                          return KeyEventResult.handled;
-                        }
-                      }
-                      return KeyEventResult.ignored;
+                : GestureDetector(
+                    onSecondaryTapDown: (details) {
+                      _showContextMenu(context, details.globalPosition, active.terminal);
                     },
-                    child: GestureDetector(
-                      onSecondaryTapDown: (details) {
-                        _showContextMenu(context, details.globalPosition, active.terminal);
+                    child: Shortcuts(
+                      shortcuts: const {
+                        SingleActivator(LogicalKeyboardKey.keyC, control: true, shift: true):
+                            _CopyIntent(),
+                        SingleActivator(LogicalKeyboardKey.keyV, control: true, shift: true):
+                            _PasteIntent(),
+                        SingleActivator(LogicalKeyboardKey.keyL, control: true):
+                            _ClearIntent(),
                       },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        child: TerminalView(
-                          active.terminal,
-                          theme: _terminalTheme,
-                          textStyle: const TerminalStyle(
-                            fontSize: 13,
-                            fontFamily: 'JetBrains Mono',
+                      child: Actions(
+                        actions: {
+                          _CopyIntent: CallbackAction<_CopyIntent>(
+                            onInvoke: (_) { _copySelection(active.terminal); return null; },
                           ),
-                          padding: const EdgeInsets.all(4),
+                          _PasteIntent: CallbackAction<_PasteIntent>(
+                            onInvoke: (_) { _pasteFromClipboard(active.terminal); return null; },
+                          ),
+                          _ClearIntent: CallbackAction<_ClearIntent>(
+                            onInvoke: (_) { _clearTerminal(active.terminal); return null; },
+                          ),
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          child: TerminalView(
+                            active.terminal,
+                            autofocus: true,
+                            theme: _terminalTheme,
+                            textStyle: const TerminalStyle(
+                              fontSize: 13,
+                              fontFamily: 'JetBrains Mono',
+                            ),
+                            padding: const EdgeInsets.all(4),
+                          ),
                         ),
                       ),
                     ),
@@ -400,4 +397,17 @@ class _SessionRowState extends State<_SessionRow> {
       ),
     );
   }
+}
+
+// Intent classes for keyboard shortcuts
+class _CopyIntent extends Intent {
+  const _CopyIntent();
+}
+
+class _PasteIntent extends Intent {
+  const _PasteIntent();
+}
+
+class _ClearIntent extends Intent {
+  const _ClearIntent();
 }
