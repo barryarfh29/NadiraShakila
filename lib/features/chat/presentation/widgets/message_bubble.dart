@@ -179,19 +179,24 @@ class MessageBubble extends StatelessWidget {
       );
     }
 
-    // During agent mode streaming, if content doesn't have [[STEPS]] wrapper
-    // but is still streaming, show thinking after the transcript
-    if (isStreaming && content.contains('> ')) {
+    // During agent mode streaming, if content has tool action patterns
+    // render as Kiro-style action cards instead of plain markdown
+    if (isStreaming && content.contains('> ') && content.contains('**')) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _RichAnswer(data: content, style: _markdownStyle()),
+          _AgentSteps(steps: content, styleSheet: _markdownStyle()),
           const Padding(
             padding: EdgeInsets.only(top: 8),
             child: _ThinkingIndicator(),
           ),
         ],
       );
+    }
+
+    // Non-agent streaming (regular chat)
+    if (isStreaming && !content.contains('> ')) {
+      return _RichAnswer(data: content, style: _markdownStyle());
     }
 
     return _RichAnswer(data: content, style: _markdownStyle());
