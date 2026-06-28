@@ -179,13 +179,47 @@ class MessageBubble extends StatelessWidget {
       );
     }
 
-    // During agent mode streaming, if content has tool action patterns
-    // render as Kiro-style action cards instead of plain markdown
+    // During agent mode streaming, split into action cards + markdown answer
     if (isStreaming && content.contains('> ') && content.contains('**')) {
+      // Split: lines starting with '>' are agent steps, rest is answer text
+      final lines = content.split('\n');
+      final stepsBuffer = StringBuffer();
+      final answerBuffer = StringBuffer();
+      bool inSteps = true;
+
+      for (final line in lines) {
+        final trimmed = line.trim();
+        if (inSteps) {
+          if (trimmed.startsWith('>') || trimmed.isEmpty) {
+            stepsBuffer.writeln(line);
+          } else {
+            // First non-blockquote, non-empty line = start of answer
+            inSteps = false;
+            answerBuffer.writeln(line);
+          }
+        } else {
+          // Once in answer mode, check if we go back to steps
+          if (trimmed.startsWith('>') && trimmed.contains('**')) {
+            inSteps = true;
+            stepsBuffer.writeln(line);
+          } else {
+            answerBuffer.writeln(line);
+          }
+        }
+      }
+
+      final stepsText = stepsBuffer.toString().trim();
+      final answerText = answerBuffer.toString().trim();
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _AgentSteps(steps: content, styleSheet: _markdownStyle()),
+          if (stepsText.isNotEmpty)
+            _AgentSteps(steps: stepsText, styleSheet: _markdownStyle()),
+          if (answerText.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _RichAnswer(data: answerText, style: _markdownStyle()),
+          ],
           const Padding(
             padding: EdgeInsets.only(top: 8),
             child: _ThinkingIndicator(),
