@@ -43,5 +43,5 @@ installer/output/
 # Deploy manager node_modules
 deploy_manager/node_modules/
 
-# Flutter SDK (if bundled locally)
-flutter/
+# Flutter SDK (if bundled locally, root level only)
+/flutter/
