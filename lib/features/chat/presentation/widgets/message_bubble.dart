@@ -640,7 +640,7 @@ class _ActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(7),
@@ -653,13 +653,13 @@ class _ActionCard extends StatelessWidget {
             children: [
               // Icon with background
               Container(
-                width: 18,
-                height: 18,
+                width: 20,
+                height: 20,
                 decoration: BoxDecoration(
                   color: iconColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child: Icon(icon, size: 11, color: iconColor),
+                child: Icon(icon, size: 12, color: iconColor),
               ),
               const SizedBox(width: 8),
               // Label
@@ -667,7 +667,7 @@ class _ActionCard extends StatelessWidget {
                 label,
                 style: const TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 11.5,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -686,7 +686,7 @@ class _ActionCard extends StatelessWidget {
                       _shortDetail(detail),
                       style: const TextStyle(
                         color: AppColors.textPrimary,
-                        fontSize: 11,
+                        fontSize: 11.5,
                         fontFamily: 'JetBrains Mono',
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -700,12 +700,12 @@ class _ActionCard extends StatelessWidget {
           if (status != null) ...[
             const SizedBox(height: 3),
             Padding(
-              padding: const EdgeInsets.only(left: 26),
+              padding: const EdgeInsets.only(left: 28),
               child: Text(
                 status!,
                 style: TextStyle(
                   color: statusColor,
-                  fontSize: 10.5,
+                  fontSize: 11,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
