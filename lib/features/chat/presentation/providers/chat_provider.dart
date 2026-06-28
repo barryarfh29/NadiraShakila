@@ -11,6 +11,7 @@ import '../../../../core/storage/hive_storage.dart';
 import '../../../agent/data/agent_changes.dart';
 import '../../../agent/data/agent_approval.dart';
 import '../../../agent/data/agent_tools.dart';
+import '../../../agent/widgets/diff_preview.dart';
 import '../../../agent/data/checkpoints_provider.dart';
 import '../../../diagnostics/diagnostics_provider.dart';
 import '../../../mcp/mcp_provider.dart';
@@ -769,7 +770,24 @@ class ChatController {
         // Risky actions require user approval unless auto-approved.
         ToolResult result;
         final needsApproval = _needsApproval(call.tool, call.args);
-        if (needsApproval && !_isAutoApproved(call.tool)) {
+
+        // For file writes/edits, show diff preview instead of simple approval
+        if ((call.tool == 'write_file' || call.tool == 'str_replace') &&
+            needsApproval && !_isAutoApproved(call.tool)) {
+          final accepted = await _showDiffPreview(call.tool, call.args, workspace);
+          if (_cancelled) break;
+          if (!accepted) {
+            result = const ToolResult(
+              'The user rejected the file change. Do not retry it; '
+              'consider an alternative or ask the user.',
+              isError: true,
+            );
+            transcript.writeln('> &nbsp;&nbsp;🚫 Ditolak user');
+          } else {
+            result = await _executeTool(executor, call.tool, call.args);
+            transcript.writeln(_toolResultLine(call.tool, call.args, result));
+          }
+        } else if (needsApproval && !_isAutoApproved(call.tool)) {
           final approvalResult = await _requestToolApproval(call.tool, call.args);
           if (_cancelled) break;
           if (!approvalResult.approved) {
@@ -1018,6 +1036,52 @@ class ChatController {
   }
 
   /// Old approval method removed — using _requestToolApproval instead
+
+  /// Shows a diff preview for file write/edit operations and waits for user decision.
+  Future<bool> _showDiffPreview(
+      String tool, Map<String, dynamic> args, String workspace) async {
+    final relPath = args['path']?.toString() ?? '';
+    final absPath = p.normalize(p.join(workspace, relPath));
+    final file = File(absPath);
+
+    String oldContent = '';
+    String newContent = '';
+
+    if (tool == 'write_file') {
+      oldContent = file.existsSync() ? file.readAsStringSync() : '';
+      newContent = args['content']?.toString() ?? '';
+    } else if (tool == 'str_replace') {
+      if (!file.existsSync()) return true; // Can't diff, just allow
+      oldContent = file.readAsStringSync();
+      final oldStr = args['old_str']?.toString() ?? '';
+      final newStr = args['new_str']?.toString() ?? '';
+      if (!oldContent.contains(oldStr)) return true; // Will fail anyway
+      newContent = oldContent.replaceFirst(oldStr, newStr);
+    }
+
+    // Compute diff hunks
+    final hunks = computeDiff(oldContent, newContent);
+    if (hunks.isEmpty) return true; // No visible changes
+
+    // Show diff preview and wait for user decision
+    _ref.read(pendingDiffProvider.notifier).state = PendingDiff(
+      filePath: relPath,
+      oldContent: oldContent,
+      newContent: newContent,
+      hunks: hunks,
+    );
+
+    // Wait for user to accept or reject
+    while (_ref.read(pendingDiffProvider) != null && !_cancelled) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      final decision = _ref.read(diffResultProvider);
+      if (decision != null) {
+        _ref.read(diffResultProvider.notifier).state = null;
+        return decision;
+      }
+    }
+    return false; // Cancelled
+  }
 
   void _generateTitle(String conversationId, String firstMessage) {
     String title = firstMessage.trim();
