@@ -424,8 +424,8 @@ class _TypingCursorState extends State<_TypingCursor>
   }
 }
 
-/// Collapsible "Thinking completed" section holding the agent's steps,
-/// shown above the final answer (collapsed by default).
+/// Kiro-style action cards showing agent's steps (read, edit, search, etc.)
+/// Renders each tool action as a styled card with icon, file badge, and status.
 class _AgentSteps extends StatefulWidget {
   final String steps;
   final MarkdownStyleSheet styleSheet;
@@ -437,59 +437,295 @@ class _AgentSteps extends StatefulWidget {
 }
 
 class _AgentStepsState extends State<_AgentSteps> {
-  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = _parseSteps(widget.steps);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Render each action as a Kiro-style card
+        for (final card in cards)
+          if (card.isText)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                card.text,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: _ActionCard(
+                icon: card.icon,
+                iconColor: card.iconColor,
+                label: card.label,
+                detail: card.detail,
+                status: card.status,
+                statusColor: card.statusColor,
+              ),
+            ),
+      ],
+    );
+  }
+
+  /// Parse the markdown transcript into structured action cards.
+  List<_StepCard> _parseSteps(String steps) {
+    final lines = steps.split('\n');
+    final cards = <_StepCard>[];
+    final textBuffer = StringBuffer();
+
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i].trim();
+      if (line.isEmpty) continue;
+
+      // Tool action line: > 📄 **tool_name** `detail`
+      if (line.startsWith('>') && line.contains('**')) {
+        // Flush text buffer
+        if (textBuffer.isNotEmpty) {
+          cards.add(_StepCard.text(textBuffer.toString().trim()));
+          textBuffer.clear();
+        }
+
+        final toolMatch = RegExp(r'>\s*(\S+)\s*\*\*(\w+)\*\*\s*`?([^`]*)`?')
+            .firstMatch(line);
+        if (toolMatch != null) {
+          final tool = toolMatch.group(2) ?? '';
+          final detail = toolMatch.group(3) ?? '';
+
+          // Look for result line right after
+          String? status;
+          Color statusColor = AppColors.secondary;
+          if (i + 1 < lines.length) {
+            final nextLine = lines[i + 1].trim();
+            if (nextLine.startsWith('>') && nextLine.contains('✅')) {
+              status = _extractStatus(nextLine);
+              statusColor = AppColors.secondary;
+              i++; // skip result line
+            } else if (nextLine.startsWith('>') && nextLine.contains('⚠️')) {
+              status = _extractStatus(nextLine);
+              statusColor = AppColors.error;
+              i++;
+            } else if (nextLine.startsWith('>') && nextLine.contains('🚫')) {
+              status = 'Rejected';
+              statusColor = AppColors.error;
+              i++;
+            }
+          }
+
+          cards.add(_StepCard.action(
+            tool: tool,
+            detail: detail,
+            status: status,
+            statusColor: statusColor,
+          ));
+        }
+      } else if (line.startsWith('>') && (line.contains('✅') || line.contains('⚠️') || line.contains('🚫'))) {
+        // Standalone result line (already consumed above usually)
+        continue;
+      } else {
+        textBuffer.writeln(line);
+      }
+    }
+
+    if (textBuffer.isNotEmpty) {
+      cards.add(_StepCard.text(textBuffer.toString().trim()));
+    }
+
+    return cards;
+  }
+
+  String _extractStatus(String line) {
+    // Remove > and &nbsp; prefix, keep the content after ✅/⚠️/🚫
+    var s = line.replaceAll(RegExp(r'^>\s*(&nbsp;|\s)*'), '');
+    s = s.replaceAll('&nbsp;', ' ').trim();
+    return s;
+  }
+}
+
+/// Data model for a parsed step card.
+class _StepCard {
+  final bool isText;
+  final String text;
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String detail;
+  final String? status;
+  final Color statusColor;
+
+  _StepCard._({
+    required this.isText,
+    this.text = '',
+    this.icon = Icons.circle,
+    this.iconColor = AppColors.textMuted,
+    this.label = '',
+    this.detail = '',
+    this.status,
+    this.statusColor = AppColors.secondary,
+  });
+
+  factory _StepCard.text(String text) =>
+      _StepCard._(isText: true, text: text);
+
+  factory _StepCard.action({
+    required String tool,
+    required String detail,
+    String? status,
+    Color statusColor = AppColors.secondary,
+  }) {
+    final info = _toolInfo(tool);
+    return _StepCard._(
+      isText: false,
+      icon: info.icon,
+      iconColor: info.color,
+      label: info.label,
+      detail: detail,
+      status: status,
+      statusColor: statusColor,
+    );
+  }
+
+  static ({IconData icon, Color color, String label}) _toolInfo(String tool) {
+    switch (tool) {
+      case 'read_file':
+        return (icon: Icons.visibility_outlined, color: const Color(0xFF63B3ED), label: 'Read file(s)');
+      case 'write_file':
+        return (icon: Icons.edit_note_outlined, color: const Color(0xFF68D391), label: 'Created file');
+      case 'str_replace':
+        return (icon: Icons.check_circle_outline, color: const Color(0xFF68D391), label: 'Accepted edits to');
+      case 'delete_file':
+        return (icon: Icons.delete_outline, color: const Color(0xFFF56565), label: 'Deleted');
+      case 'list_dir':
+        return (icon: Icons.folder_open_outlined, color: const Color(0xFFECC94B), label: 'Listed directory');
+      case 'run_command':
+        return (icon: Icons.terminal, color: const Color(0xFFB794F4), label: 'Ran command');
+      case 'read_terminal':
+        return (icon: Icons.computer_outlined, color: const Color(0xFF9F7AEA), label: 'Read terminal');
+      default:
+        return (icon: Icons.build_outlined, color: AppColors.textMuted, label: tool);
+    }
+  }
+}
+
+/// Kiro-style action card widget.
+class _ActionCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String detail;
+  final String? status;
+  final Color statusColor;
+
+  const _ActionCard({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.detail,
+    this.status,
+    this.statusColor = AppColors.secondary,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle_outline,
-                      size: 14, color: AppColors.secondary),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Thinking completed',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w500,
+          // Status icon (left)
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(icon, size: 13, color: iconColor),
+          ),
+          const SizedBox(width: 10),
+
+          // Label + file detail
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    _expanded ? Icons.expand_less : Icons.expand_more,
-                    size: 16,
-                    color: AppColors.textMuted,
+                    if (detail.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.codeBlock,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                                color: AppColors.border.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            _shortDetail(detail),
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 11,
+                              fontFamily: 'JetBrains Mono',
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                if (status != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    status!,
+                    style: TextStyle(
+                      color: statusColor.withValues(alpha: 0.8),
+                      fontSize: 10.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
-              ),
+              ],
             ),
           ),
-          if (_expanded)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-              child: MarkdownBody(
-                data: widget.steps,
-                selectable: true,
-                styleSheet: widget.styleSheet,
-              ),
-            ),
         ],
       ),
     );
+  }
+
+  /// Shorten path to just filename for display
+  String _shortDetail(String detail) {
+    if (detail.contains('/')) {
+      return detail.split('/').last;
+    }
+    if (detail.length > 40) {
+      return '${detail.substring(0, 37)}...';
+    }
+    return detail;
   }
 }
 
