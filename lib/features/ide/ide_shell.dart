@@ -49,7 +49,7 @@ class IdeShell extends ConsumerWidget {
           openWorkspaceFolder(context, ref);
         },
       },
-      child: Focus(
+      child: FocusScope(
         autofocus: true,
         child: Scaffold(
           body: Column(
