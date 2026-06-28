@@ -454,19 +454,19 @@ class _AgentStepsState extends State<_AgentSteps> {
         for (final card in cards)
           if (card.isText)
             Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.only(bottom: 5),
               child: Text(
                 card.text,
                 style: const TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 12,
-                  height: 1.4,
+                  fontSize: 12.5,
+                  height: 1.5,
                 ),
               ),
             )
           else
             Padding(
-              padding: const EdgeInsets.only(bottom: 3),
+              padding: const EdgeInsets.only(bottom: 4),
               child: _ActionCard(
                 icon: card.icon,
                 iconColor: card.iconColor,
@@ -640,10 +640,10 @@ class _ActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(7),
         border: Border.all(color: AppColors.border.withValues(alpha: 0.4)),
       ),
       child: Column(
@@ -651,33 +651,42 @@ class _ActionCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              // Icon
-              Icon(icon, size: 12, color: iconColor),
-              const SizedBox(width: 6),
+              // Icon with background
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Icon(icon, size: 11, color: iconColor),
+              ),
+              const SizedBox(width: 8),
               // Label
               Text(
                 label,
                 style: const TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 11,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
               if (detail.isNotEmpty) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 // File badge
                 Flexible(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 5, vertical: 1),
+                        horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppColors.codeBlock,
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       _shortDetail(detail),
                       style: const TextStyle(
                         color: AppColors.textPrimary,
-                        fontSize: 10.5,
+                        fontSize: 11,
                         fontFamily: 'JetBrains Mono',
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -689,14 +698,14 @@ class _ActionCard extends StatelessWidget {
             ],
           ),
           if (status != null) ...[
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
             Padding(
-              padding: const EdgeInsets.only(left: 18),
+              padding: const EdgeInsets.only(left: 26),
               child: Text(
                 status!,
                 style: TextStyle(
                   color: statusColor,
-                  fontSize: 10,
+                  fontSize: 10.5,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
