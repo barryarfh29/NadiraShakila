@@ -931,7 +931,8 @@ class ChatController {
     }
     switch (tool) {
       case 'read_file':
-        return '> &nbsp;&nbsp;✅ Read (${result.output.length} chars)';
+        final lines = result.output.split('\n').length;
+        return '> &nbsp;&nbsp;✅ Read $lines lines (1-$lines)';
       case 'list_dir':
         final count = result.output.split('\n').length - 1;
         return '> &nbsp;&nbsp;✅ $count entries';

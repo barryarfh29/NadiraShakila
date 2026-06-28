@@ -640,10 +640,10 @@ class _ActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border.withValues(alpha: 0.4)),
       ),
       child: Column(
@@ -653,31 +653,31 @@ class _ActionCard extends StatelessWidget {
             children: [
               // Icon with background
               Container(
-                width: 20,
-                height: 20,
+                width: 22,
+                height: 22,
                 decoration: BoxDecoration(
                   color: iconColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child: Icon(icon, size: 12, color: iconColor),
+                child: Icon(icon, size: 13, color: iconColor),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 9),
               // Label
               Text(
                 label,
                 style: const TextStyle(
                   color: AppColors.textSecondary,
-                  fontSize: 12.5,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               if (detail.isNotEmpty) ...[
-                const SizedBox(width: 8),
+                const SizedBox(width: 9),
                 // File badge
                 Flexible(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
+                        horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppColors.codeBlock,
                       borderRadius: BorderRadius.circular(4),
@@ -686,7 +686,7 @@ class _ActionCard extends StatelessWidget {
                       _shortDetail(detail),
                       style: const TextStyle(
                         color: AppColors.textPrimary,
-                        fontSize: 11.5,
+                        fontSize: 12,
                         fontFamily: 'JetBrains Mono',
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -698,14 +698,14 @@ class _ActionCard extends StatelessWidget {
             ],
           ),
           if (status != null) ...[
-            const SizedBox(height: 3),
+            const SizedBox(height: 4),
             Padding(
-              padding: const EdgeInsets.only(left: 28),
+              padding: const EdgeInsets.only(left: 31),
               child: Text(
                 status!,
                 style: TextStyle(
                   color: statusColor,
-                  fontSize: 11,
+                  fontSize: 11.5,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
