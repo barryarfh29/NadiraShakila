@@ -45,3 +45,6 @@ deploy_manager/node_modules/
 
 # Flutter SDK (if bundled locally, root level only)
 /flutter/
+
+# Node.js local install (not needed in repo)
+/node20/
