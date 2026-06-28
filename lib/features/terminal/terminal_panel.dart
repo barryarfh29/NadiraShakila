@@ -171,40 +171,18 @@ class _TerminalPanelState extends ConsumerState<TerminalPanel> {
                     onSecondaryTapDown: (details) {
                       _showContextMenu(context, details.globalPosition, active.terminal);
                     },
-                    child: Shortcuts(
-                      shortcuts: const {
-                        SingleActivator(LogicalKeyboardKey.keyC, control: true, shift: true):
-                            _CopyIntent(),
-                        SingleActivator(LogicalKeyboardKey.keyV, control: true, shift: true):
-                            _PasteIntent(),
-                        SingleActivator(LogicalKeyboardKey.keyL, control: true):
-                            _ClearIntent(),
-                      },
-                      child: Actions(
-                        actions: {
-                          _CopyIntent: CallbackAction<_CopyIntent>(
-                            onInvoke: (_) { _copySelection(active.terminal); return null; },
-                          ),
-                          _PasteIntent: CallbackAction<_PasteIntent>(
-                            onInvoke: (_) { _pasteFromClipboard(active.terminal); return null; },
-                          ),
-                          _ClearIntent: CallbackAction<_ClearIntent>(
-                            onInvoke: (_) { _clearTerminal(active.terminal); return null; },
-                          ),
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: TerminalView(
-                            active.terminal,
-                            autofocus: true,
-                            theme: _terminalTheme,
-                            textStyle: const TerminalStyle(
-                              fontSize: 13,
-                              fontFamily: 'JetBrains Mono',
-                            ),
-                            padding: const EdgeInsets.all(4),
-                          ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      child: TerminalView(
+                        active.terminal,
+                        autofocus: true,
+                        hardwareKeyboardOnly: true,
+                        theme: _terminalTheme,
+                        textStyle: const TerminalStyle(
+                          fontSize: 13,
+                          fontFamily: 'JetBrains Mono',
                         ),
+                        padding: const EdgeInsets.all(4),
                       ),
                     ),
                   ),
@@ -398,16 +376,4 @@ class _SessionRowState extends State<_SessionRow> {
     );
   }
 }
-
-// Intent classes for keyboard shortcuts
-class _CopyIntent extends Intent {
-  const _CopyIntent();
-}
-
-class _PasteIntent extends Intent {
-  const _PasteIntent();
-}
-
-class _ClearIntent extends Intent {
-  const _ClearIntent();
-}
+// (Intent classes removed - using TerminalView's built-in keyboard handling)
