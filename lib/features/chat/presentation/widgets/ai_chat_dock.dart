@@ -7,8 +7,10 @@ import 'package:path/path.dart' as p;
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/theme/codicons.dart';
+import '../../../agent/data/agent_approval.dart';
 import '../../../agent/data/agent_changes.dart';
 import '../../../agent/data/checkpoints_provider.dart';
+import '../../../agent/widgets/approval_dialog.dart';
 import '../../../workspace/providers/workspace_provider.dart';
 import '../../data/models/conversation_model.dart';
 import '../providers/attached_context.dart';
@@ -46,6 +48,7 @@ class AiChatDock extends ConsumerWidget {
             ),
             if (apiKey.isNotEmpty) const _ChangesBar(),
             if (apiKey.isNotEmpty) const _ApprovalBar(),
+            if (apiKey.isNotEmpty) const _NewApprovalBar(),
             if (apiKey.isNotEmpty) const ChatInput(),
           ],
         ),
@@ -785,6 +788,18 @@ class _ApprovalBar extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+/// New approval bar with checklist support
+class _NewApprovalBar extends ConsumerWidget {
+  const _NewApprovalBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final request = ref.watch(approvalRequestProvider);
+    if (request == null) return const SizedBox.shrink();
+    return const AgentApprovalBar();
   }
 }
 

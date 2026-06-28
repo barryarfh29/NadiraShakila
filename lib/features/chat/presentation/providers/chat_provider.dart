@@ -9,6 +9,7 @@ import '../../../../core/constants/system_prompts.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/storage/hive_storage.dart';
 import '../../../agent/data/agent_changes.dart';
+import '../../../agent/data/agent_approval.dart';
 import '../../../agent/data/agent_tools.dart';
 import '../../../agent/data/checkpoints_provider.dart';
 import '../../../diagnostics/diagnostics_provider.dart';
@@ -765,22 +766,21 @@ class ChatController {
           }
         }
 
-        // Risky commands require user approval unless auto-approve is on.
+        // Risky actions require user approval unless auto-approved.
         ToolResult result;
-        if (call.tool == 'run_command' &&
-            !_ref.read(autoApproveCommandsProvider)) {
-          final cmd = call.args['command']?.toString() ?? '';
-          final approved = await _requestApproval(cmd);
+        final needsApproval = _needsApproval(call.tool, call.args);
+        if (needsApproval && !_isAutoApproved(call.tool)) {
+          final approvalResult = await _requestToolApproval(call.tool, call.args);
           if (_cancelled) break;
-          if (!approved) {
+          if (!approvalResult.approved) {
             result = const ToolResult(
-              'The user rejected this command. Do not retry it; '
+              'The user rejected this action. Do not retry it; '
               'consider an alternative or ask the user.',
               isError: true,
             );
-            transcript.writeln('> &nbsp;&nbsp;🚫 Rejected by user');
+            transcript.writeln('> &nbsp;&nbsp;🚫 Ditolak user');
           } else {
-            result = await executor.execute(call.tool, call.args);
+            result = await _executeTool(executor, call.tool, call.args);
             transcript
                 .writeln(_toolResultLine(call.tool, call.args, result));
           }
@@ -925,13 +925,99 @@ class ChatController {
     }
   }
 
-  /// Surfaces a command-approval request to the UI and waits for the answer.
-  Future<bool> _requestApproval(String command) {
-    final completer = Completer<bool>();
-    _ref.read(pendingApprovalProvider.notifier).state =
-        PendingApproval(command, completer);
+  /// Determines if a tool action needs user approval.
+  bool _needsApproval(String tool, Map<String, dynamic> args) {
+    switch (tool) {
+      case 'run_command':
+        return true;
+      case 'write_file':
+        return true;
+      case 'delete_file':
+        return true;
+      default:
+        return false; // read_file, list_dir, read_terminal don't need approval
+    }
+  }
+
+  /// Checks if the action type is auto-approved by user settings.
+  bool _isAutoApproved(String tool) {
+    final settings = _ref.read(autoApproveSettingsProvider);
+    switch (tool) {
+      case 'run_command':
+        return settings.commands ||
+            _ref.read(autoApproveCommandsProvider); // backward compat
+      case 'write_file':
+      case 'str_replace':
+        return settings.fileWrites;
+      case 'delete_file':
+        return settings.fileDeletes;
+      default:
+        return false;
+    }
+  }
+
+  /// Shows the new approval UI with proper type classification.
+  Future<ApprovalResult> _requestToolApproval(
+      String tool, Map<String, dynamic> args) {
+    final completer = Completer<ApprovalResult>();
+    final ApprovalType type;
+    final String title;
+    final List<ApprovalItem> items;
+
+    switch (tool) {
+      case 'run_command':
+        final cmd = args['command']?.toString() ?? '';
+        // Detect install commands
+        final isInstall = cmd.contains('install') ||
+            cmd.contains('pub add') ||
+            cmd.contains('pub get') ||
+            cmd.contains('pip install') ||
+            cmd.contains('yarn add');
+        type = isInstall ? ApprovalType.install : ApprovalType.command;
+        title = isInstall ? 'Install package?' : 'Jalankan command ini?';
+        items = [
+          ApprovalItem(label: cmd, type: type),
+        ];
+        break;
+      case 'write_file':
+        final path = args['path']?.toString() ?? '';
+        type = ApprovalType.writeFile;
+        title = 'Buat/overwrite file?';
+        items = [
+          ApprovalItem(
+            label: path,
+            detail: '${(args['content']?.toString().length ?? 0)} chars',
+            type: type,
+          ),
+        ];
+        break;
+      case 'delete_file':
+        final path = args['path']?.toString() ?? '';
+        type = ApprovalType.deleteFile;
+        title = 'Hapus file ini?';
+        items = [
+          ApprovalItem(label: path, type: type),
+        ];
+        break;
+      default:
+        type = ApprovalType.command;
+        title = 'Lakukan aksi ini?';
+        items = [
+          ApprovalItem(label: '$tool: ${args.toString()}', type: type),
+        ];
+    }
+
+    _ref.read(approvalRequestProvider.notifier).state = ApprovalRequest(
+      title: title,
+      type: type,
+      items: items,
+      completer: completer,
+    );
+
     return completer.future;
   }
+
+  /// Old approval method removed — using _requestToolApproval instead
 
   void _generateTitle(String conversationId, String firstMessage) {
     String title = firstMessage.trim();
@@ -957,6 +1043,12 @@ class ChatController {
       pending.completer.complete(false);
     }
     _ref.read(pendingApprovalProvider.notifier).state = null;
+    // Cancel new approval system
+    final approval = _ref.read(approvalRequestProvider);
+    if (approval != null && !approval.completer.isCompleted) {
+      approval.completer.complete(ApprovalResult.rejected);
+    }
+    _ref.read(approvalRequestProvider.notifier).state = null;
     _ref.read(agentStatusProvider.notifier).state = null;
     _ref.read(isStreamingProvider.notifier).state = false;
   }
