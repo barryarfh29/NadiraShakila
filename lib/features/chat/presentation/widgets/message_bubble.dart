@@ -181,30 +181,44 @@ class MessageBubble extends StatelessWidget {
 
     // During agent mode streaming, split into action cards + markdown answer
     if (isStreaming && content.contains('> ') && content.contains('**')) {
-      // Split: lines starting with '>' are agent steps, rest is answer text
+      // Split: consecutive blockquote lines (starting '>') are steps,
+      // everything else is the answer text rendered as markdown
       final lines = content.split('\n');
       final stepsBuffer = StringBuffer();
       final answerBuffer = StringBuffer();
-      bool inSteps = true;
+      bool foundAnswer = false;
 
-      for (final line in lines) {
-        final trimmed = line.trim();
-        if (inSteps) {
-          if (trimmed.startsWith('>') || trimmed.isEmpty) {
-            stepsBuffer.writeln(line);
-          } else {
-            // First non-blockquote, non-empty line = start of answer
-            inSteps = false;
-            answerBuffer.writeln(line);
+      for (var i = 0; i < lines.length; i++) {
+        final trimmed = lines[i].trim();
+
+        if (!foundAnswer) {
+          // In steps section: blockquotes and empty lines are steps,
+          // non-blockquote text between steps is preamble (also steps)
+          if (trimmed.startsWith('>')) {
+            stepsBuffer.writeln(lines[i]);
+          } else if (trimmed.isEmpty && stepsBuffer.isNotEmpty) {
+            stepsBuffer.writeln();
+          } else if (trimmed.isNotEmpty && !trimmed.startsWith('>')) {
+            // Check if next lines contain a blockquote (meaning this is
+            // preamble text between tool calls)
+            bool hasMoreSteps = false;
+            for (var j = i + 1; j < lines.length && j < i + 4; j++) {
+              if (lines[j].trim().startsWith('>')) {
+                hasMoreSteps = true;
+                break;
+              }
+            }
+            if (hasMoreSteps) {
+              stepsBuffer.writeln(lines[i]);
+            } else {
+              // This is the start of the final answer
+              foundAnswer = true;
+              answerBuffer.writeln(lines[i]);
+            }
           }
         } else {
-          // Once in answer mode, check if we go back to steps
-          if (trimmed.startsWith('>') && trimmed.contains('**')) {
-            inSteps = true;
-            stepsBuffer.writeln(line);
-          } else {
-            answerBuffer.writeln(line);
-          }
+          // In answer section: everything goes to answer (markdown)
+          answerBuffer.writeln(lines[i]);
         }
       }
 
