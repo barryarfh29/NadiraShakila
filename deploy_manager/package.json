@@ -1,0 +1,32 @@
+{
+  "name": "deploy-manager",
+  "version": "1.0.0",
+  "description": "Auto-rebuild and deployment manager for Flutter projects",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "deploy",
+    "build",
+    "flutter",
+    "ci",
+    "deployment"
+  ],
+  "author": "AI Desktop IDE",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "chokidar": "^3.5.3",
+    "simple-git": "^3.20.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}

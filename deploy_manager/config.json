@@ -1,0 +1,8 @@
+{
+  "projectPath": "..",
+  "buildCommand": "D:\\ai_desktop\\flutter\\bin\\flutter build windows --release",
+  "port": 3000,
+  "debounceMs": 3000,
+  "autoOpenBrowser": true,
+  "gitPollInterval": 30
+}

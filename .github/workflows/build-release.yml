@@ -1,0 +1,64 @@
+name: Build & Release Windows
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0, v1.1.0
+  workflow_dispatch:  # Manual trigger from GitHub UI
+
+env:
+  FLUTTER_VERSION: '3.44.1'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Create portable ZIP
+        run: |
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "AIDesktop-Portable.zip"
+
+      - name: Build installer (Inno Setup)
+        run: |
+          choco install innosetup -y --no-progress
+          iscc "installer\ai_desktop.iss"
+
+      - name: Upload portable ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AIDesktop-Portable
+          path: AIDesktop-Portable.zip
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AIDesktop-Installer
+          path: installer/output/AIDesktop-Setup-*.exe
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            AIDesktop-Portable.zip
+            installer/output/AIDesktop-Setup-*.exe
+          generate_release_notes: true
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

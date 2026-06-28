@@ -1,0 +1,21 @@
+{
+  "name": "nadira-shakila-server",
+  "version": "1.0.0",
+  "description": "Backend for Nadira Shakila web IDE: file API + terminal (PTY) over WebSocket. Deploy on a VPS (EasyPanel).",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-pty": "^1.0.0",
+    "ws": "^8.18.0"
+  }
+}
