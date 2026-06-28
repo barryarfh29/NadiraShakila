@@ -13,6 +13,7 @@ import '../rundebug/run_debug_panel.dart';
 import '../search/search_panel.dart';
 import '../specs/specs_panel.dart';
 import '../terminal/terminal_provider.dart';
+import '../updater/update_dialog.dart';
 import '../workspace/widgets/editor_area.dart';
 import '../workspace/widgets/file_explorer.dart';
 import '../workspace/widgets/status_bar.dart';
@@ -53,6 +54,7 @@ class IdeShell extends ConsumerWidget {
         child: Scaffold(
           body: Column(
             children: [
+              const UpdateBanner(),
               const AppMenuBar(),
               Expanded(
                 child: Row(
